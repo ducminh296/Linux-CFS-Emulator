@@ -4,8 +4,7 @@
 // AUTHOR: Minh Mai
 //
 // Utility includes:
-// + PROCESS QUEUE
-// +
+// + PROCESS QUEUE FACILITY
 //
 //
 //
@@ -16,13 +15,15 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <semaphore.h>
 #include "sched.h"
+#include <sys/sem.h>
 
 #define QUEUE_SIZE 100
 
 //*****************************************************************************
 //
-// PROCESS QUEUE Utility
+// PROCESS QUEUE Facility
 //
 //*****************************************************************************
 /* Define a queue can hold up to 100 processes */

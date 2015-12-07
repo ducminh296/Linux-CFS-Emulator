@@ -11,14 +11,15 @@
 //*****************************************************************************
 
 #include "util.h"
-// Function to check priority and place element
-void static check(struct process_t *process, struct queue_t *queue);
 //*****************************************************************************
 //
-// PROCESS PRORITY QUEUE Utility Implementations
+// PROCESS PRORITY QUEUE FACILITY Implementations
 // 
 //
 //*****************************************************************************
+
+// Function to check priority and place element
+void static check(struct process_t *process, struct queue_t *queue);
 
 //*****************************************************************************
 //
@@ -66,13 +67,16 @@ void append(struct process_t *process, struct queue_t *queue)
 struct process_t *take(struct queue_t *queue)
 {
 	struct process_t *w;
+    /* if queue is empty then return NULL */
+    if (queue->out == queue->in) return NULL;
+    /* else return pointer to a process */
 	w = &(queue->pool[queue->out]);
 	queue->out = (queue->out + 1) % queue->k;
 	return w;
 }
 //*****************************************************************************
 //
-//! \ Internal
+//! \Internal
 //!
 //! Function to check priority of process and place process into the queue
 //!
@@ -100,5 +104,3 @@ void static check(struct process_t *process, struct queue_t *queue)
     }
     queue->pool[i] = *process;
 }
-
-	

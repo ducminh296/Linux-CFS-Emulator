@@ -1,6 +1,3 @@
-# Linux-CFS-Emulator
-Emulate Linux Completely Fair Scheduler (CFS) using threads
-
 ## How to compile
 	>> make clean
 	>> make
