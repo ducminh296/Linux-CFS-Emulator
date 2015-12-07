@@ -17,7 +17,6 @@
 #include <pthread.h>
 #include <semaphore.h>
 #include "sched.h"
-#include <sys/sem.h>
 
 #define QUEUE_SIZE 100
 

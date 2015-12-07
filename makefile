@@ -1,7 +1,7 @@
 CC = gcc
 DEBUG= NODEBUG
-CFLAGS = -Wall -c -D$(DEBUG)
-LFLAGS = -Wall -D$(DEBUG)
+CFLAGS = -Wall -c -lpthread -D$(DEBUG)
+LFLAGS = -Wall -lpthread -D$(DEBUG)
 all: CFS-emulator
 CFS-emulator: CFS-emulator.o util.o 
 	$(CC) $(LFLAGS) CFS-emulator.o util.o -o CFS-emulator

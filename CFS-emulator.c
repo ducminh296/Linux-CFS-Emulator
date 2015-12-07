@@ -21,6 +21,7 @@
 #define MAX_SLEEP_AVG 10 // maximum sleep average time
 #define MAX(x, y) (((x) > (y)) ? (x) : (y)) //find max
 #define MIN(x, y) (((x) < (y)) ? (x) : (y)) //find min
+#define b_freq 2 // frequency of the balancer 
 // ****************************************************************************
 // Create a global table of run queues where:
 // Row number is CPU number
@@ -48,7 +49,6 @@ int n_process; //stores total number of processes still in the ready queue
 int b_value; //the number of processes each CPU should have in their ready queue
 int running = 1; //indicate that the emulator is still running
 int cpu_count[NUM_CPU];
-
 /** producer thread **/
 void *producer(void *arg);
 struct process_t ltop(char *line);//convert a string to a process struct
@@ -94,13 +94,16 @@ int main(int argc, char const *argv[])
         fprintf(stderr, "[main]: Setting detached attribute failed.\n");
         exit(EXIT_FAILURE);
     }
+    
     //trigger balancer thread
+    
     res = pthread_create(&balancer_thread, &thread_attr, balancer, (void *)NULL);
     if (res != 0) 
     {
         fprintf(stderr, "[main]: balancer thread creation failed.\n");
         exit(EXIT_FAILURE);
     }
+    
     //create 4 CPU threads
 	for (int i=0; i<NUM_CPU; i++)
 	{
@@ -139,6 +142,7 @@ void *producer(void *arg)
 	int CPU,res;
 	int count = 1;
 	printf("[producer]: Producer has been created.\n");
+	printf("[producer]: Loading processes. Please wait a few secs....\n");
 	file = fopen(PROCESS_FILE, "r");
 	if (file == NULL) 
 	{
@@ -210,6 +214,7 @@ void *producer(void *arg)
 		p_count[CPU]++; //increase the number of processes for that CPU
 	}
 	process_status();
+	sleep(2);
 	pthread_exit(NULL);
 }
 //*****************************************************************************
@@ -421,7 +426,7 @@ void static execute_NORMAL(int CPU, struct process_t *process)
 	t1 = process->last_run;
 	gettimeofday(&t2, NULL);
 	deltaT = (t2.tv_sec - t1.tv_sec) * 1000 + (t2.tv_usec - t1.tv_usec)/1000;
-	ticks = deltaT/100;
+	ticks = deltaT/200;
 	ticks = (ticks<MAX_SLEEP_AVG)?ticks:MAX_SLEEP_AVG;
 	//add tick to the sleep_avg
 	process->sleep_avg += ticks;
@@ -439,6 +444,7 @@ void static execute_NORMAL(int CPU, struct process_t *process)
 	/* Accumulate time_slice */
 	process->accu_time_slice += process->time_slice;
 	/* service_time is between 10 ms and time_slice */
+	srand(time(NULL));//seed the random generator
 	service_time = 10 + (rand() % (process->time_slice - 9));
 	/* execute process */
 	printf("[CPU %d]: executing process PID %d, %s, service_time = %d.\n", \
@@ -503,7 +509,7 @@ void *balancer(void *arg)
 {
 	struct process_t *process;
 	int new_cpu,i,j;
-	int possible = 1;
+	int current_queue;
 	printf("[balancer]: Balancer has been created.\n");
 	while (running)
 	{
@@ -520,8 +526,7 @@ void *balancer(void *arg)
 		b_value = n_process/NUM_CPU;
 		for (i = 0; i < NUM_CPU; i++)
 		{
-			possible = 1;
-			while (p_count[i] > b_value && possible) 
+			while (p_count[i] > b_value) 
 			//while CPU has more than b_value processes
 			{
 				//take out one process from the CPU's queue
@@ -531,11 +536,16 @@ void *balancer(void *arg)
 					pthread_mutex_lock(&QM[i][j]);
 					process = take(&RQ[i][j]);
 					pthread_mutex_unlock(&QM[i][j]);
-					if (process != NULL) break;
+					//update p_count
+					p_count[i]--;
+					if (process != NULL)
+					{
+						current_queue = j;
+						break;
+					}
 				}
 				// if cannot take out any process then break
 				if (process == NULL) {
-					possible = 0;
 					break;
 				}
 				//find a CPU to move the process over
@@ -544,8 +554,13 @@ void *balancer(void *arg)
 					if (j != i && p_count[j]< b_value) break;
 				}
 				// if cannot find any available cpu, then break
-				if (j == NUM_CPU || p_count[j]>=b_value) {
-					possible = 0;
+				if (j == NUM_CPU || p_count[j]>=b_value)
+				{
+					/* put back the process into the queue */
+					pthread_mutex_lock(&QM[i][current_queue]);
+					append(process, &RQ[i][current_queue]);
+					pthread_mutex_unlock(&QM[i][current_queue]);
+					p_count[i]++;
 					break;
 				}
 				//found a new cpu for process
@@ -569,11 +584,10 @@ void *balancer(void *arg)
 					pthread_mutex_unlock(&QM[new_cpu][0]);
 				}
 				//update p_count
-				p_count[i]--;
 				p_count[new_cpu]++;
 			}
 		}
-		sleep(1);
+		sleep(b_freq);
 	}
 	pthread_exit(NULL);
 }
